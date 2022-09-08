@@ -30,7 +30,3 @@ python example.py
 - [Supervised Tree-Wasserstein Distances (ICML 2021)](https://github.com/yukiTakezawa/STW)
 - [Fixed Support Tree-Sliced Wasserstein Barycenter (AISTATS 2022)](https://github.com/yukiTakezawa/FS_TSWB)
 
-## Contributors
-Name : [Makoto Yamada](https://riken-yamada.github.io/profile.html) (Okinawa Institute of Science and Technology / Kyoto University) and [Yuki Takezawa](https://yukitakezawa.github.io/) (Kyoto University)
-
-E-mail : makoto (dot) yamada (at) oist.jp
