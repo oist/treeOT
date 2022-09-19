@@ -20,7 +20,7 @@ python example.py
 @article{yamada2022approximating,
   title={Approximating 1-Wasserstein Distance with Trees},
   author={Yamada, Makoto and Takezawa, Yuki and Sato, Ryoma and Bao, Han and Kozareva, Zornitsa and Ravi, Sujith},
-  journal={arXiv preprint arXiv:2206.12116},
+  journal={Transaction on Machine Learning Research},
   year={2022}
 }
 ```
