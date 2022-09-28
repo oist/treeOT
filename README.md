@@ -1,5 +1,5 @@
 # Tree Wasserstein distance with weight training
-This is the demo code for the [Tree Wasserstein distance](https://arxiv.org/abs/2206.12116).
+This is the demo code for the paper entitled [Approximating 1-Wasserstein Distance with Trees](https://openreview.net/forum?id=Ig82l87ZVU).
 
 Note that we used the QuadTree and clustertree implementations of [Fixed Support Tree-Sliced Wasserstein Barycenter](https://github.com/yukiTakezawa/FS_TSWB).
 
