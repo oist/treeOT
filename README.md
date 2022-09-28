@@ -17,11 +17,14 @@ python example.py
 
 ## Citation
 ```
-@article{yamada2022approximating,
-  title={Approximating 1-Wasserstein Distance with Trees},
-  author={Yamada, Makoto and Takezawa, Yuki and Sato, Ryoma and Bao, Han and Kozareva, Zornitsa and Ravi, Sujith},
-  journal={Transaction on Machine Learning Research},
-  year={2022}
+@article{
+yamada2022approximating,
+title={Approximating 1-Wasserstein Distance with Trees},
+author={Makoto Yamada and Yuki Takezawa and Ryoma Sato and Han Bao and Zornitsa Kozareva and Sujith Ravi},
+journal={Transactions on Machine Learning Research},
+year={2022},
+url={https://openreview.net/forum?id=Ig82l87ZVU},
+note={}
 }
 ```
 
