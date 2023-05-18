@@ -31,10 +31,10 @@ M_all = ot.dist(X_all,X_all,metric='euclidean')
 # lam: The regularization parameter
 n_slice = 1
 lam = 0.001
-ctree = treeOT(X_all / M_all.max(), method='cluster', lam=lam, n_slice=n_slice)
+ctree = treeOT(X_all / M_all.max(), method='cluster', lam=lam, n_slice=n_slice,is_sparse=True)
 
 #Test
-n_test_sample = 1000
+n_test_sample = 100
 np.random.seed(0)
 ind1 = np.random.randint(0,n,n_test_sample)
 ind2 = np.random.randint(0,n,n_test_sample)
@@ -72,6 +72,9 @@ start = time.time()
 result_TWD = ctree.pairwiseTWD(A_full,B_full)
 elapsed_time_twd = time.time() - start
 
+tree_size = ctree.wB.data.nbytes
+
 print('Error: %f' % (np.abs(score_WD-result_TWD).mean()))
 print('R2: %f' % (np.corrcoef(score_WD,result_TWD)[0][1]))
 print('Time: EMD (%f), TWD (%f)' % (elapsed_time_emd,elapsed_time_twd))
+print('Tree matrix: %.3f KB' % (tree_size / 1000))

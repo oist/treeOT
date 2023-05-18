@@ -6,9 +6,11 @@ import random
 import spams
 from scipy import sparse
 from scipy.sparse import csr_matrix
+import networkx as nx
+import joblib
 
 class treeOT():
-    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False):
+    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=False):
         """
          Parameter
          ----------
@@ -44,8 +46,19 @@ class treeOT():
                 print("build done")
                 self.D1, self.D2 = self.gen_matrix(tree, X)
 
+            #Construct B matrix
+            n_leaf, d = X.shape
+            n_in = self.D2.shape[0]
+            B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
+            B_ = np.concatenate((B1, np.eye(n_leaf)))
 
-            wv_, B_ = self.calc_weight(X,lam=lam,nmax=nmax)
+            if is_sparse:
+                #This one can be used when the number of samples are large
+                #Make B matrix sparse
+                Bsp = sparse.csc_matrix(B_)
+                wv_ = self.calc_weight_sparse(X, Bsp, lam=lam, nmax=nmax)
+            else:
+                wv_ = self.calc_weight(X,B_,lam=lam,nmax=nmax)
 
             if i == 0:
                 B = B_
@@ -222,15 +235,15 @@ class treeOT():
                 D1[parent_idx, node_idx] = 1.0
         return D1, D2
 
-    def calc_weight(self, X, lam=0.001, seed=0, nmax=100000):
+    def calc_weight(self, X, B, lam=0.001, seed=0, nmax=100000):
 
         n_leaf, d = X.shape
         random.seed(seed)
 
         # Create B matrix
         n_in = self.D2.shape[0]
-        B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
-        B = np.concatenate((B1, np.eye(n_leaf)))
+        #B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
+        #B = np.concatenate((B1, np.eye(n_leaf)))
 
         dz = B.shape[0]
 
@@ -262,8 +275,123 @@ class treeOT():
 
         (W, optim_info) = spams.fistaFlat(c, Zsp, W0, True, **param)
 
-        return W,B
+        return W
 
+    def calc_weight_in(self,X, Bsp, ind1, ind2):
+        n = len(ind1)
+        c_tmp = np.zeros(n)
+        for ii in range(n):
+            c_tmp[ii] = np.linalg.norm(X[ind1[ii], :] - X[ind2[ii], :], ord=2)
+            tmp = Bsp[:, ind1[ii]] + Bsp[:, ind2[ii]] - 2 * (Bsp[:, ind1[ii]].multiply(Bsp[:, ind2[ii]]))
+
+            if ii == 0:
+                row_ind = tmp.indices
+                col_ind = np.ones(len(row_ind)) * ii
+                data = tmp[row_ind].toarray().flatten()
+            else:
+                row_ind_tmp = tmp.indices
+                col_ind_tmp = np.ones(len(row_ind_tmp)) * ii
+                row_ind = np.concatenate((row_ind, row_ind_tmp))
+                col_ind = np.concatenate((col_ind, col_ind_tmp))
+                data = np.concatenate((data, tmp[row_ind_tmp].toarray().flatten()))
+
+        return c_tmp, col_ind, row_ind, data, len(data)
+
+    def calc_weight_sparse(self,X, Bsp, lam=0.001, seed=0, nmax=100000, b=100):
+        n_leaf, d = X.shape
+        random.seed(seed)
+
+        c_all = np.zeros((nmax, 1))
+        dz = Bsp.shape[0]
+
+        np.random.seed(seed)
+        ind1 = np.random.randint(0, n_leaf, nmax)
+        ind2 = np.random.randint(0, n_leaf, nmax)
+
+
+        # Multi proces
+        result = joblib.Parallel(n_jobs=-1)(
+            joblib.delayed(self.calc_weight_in)(X, Bsp, ind1[b * i:(i + 1) * b], ind2[b * i:(i + 1) * b]) for i in
+            range(int(nmax / b)))
+
+        n_ele = 0
+        for ii in range(int(nmax / b)):
+            n_ele += result[ii][4]
+
+        col_ind = np.zeros(n_ele)
+        row_ind = np.zeros(n_ele)
+        data = np.zeros(n_ele)
+        st = 0
+        ed = result[0][4]
+        for ii in range(int(nmax / b) - 1):
+            c_all[ii * b:(ii + 1) * b, 0] = result[ii][0]
+            col_ind[st:ed] = result[ii][1] + (ii) * b
+            row_ind[st:ed] = result[ii][2]
+            data[st:ed] = result[ii][3]
+            st += result[ii][4]
+            ed += result[ii + 1][4]
+
+        ii = int(nmax / b) - 1
+        c_all[ii * b:(ii + 1) * b, 0] = result[ii][0]
+        col_ind[st:ed] = result[ii][1] + (ii) * b
+        row_ind[st:ed] = result[ii][2]
+        data[st:ed] = result[ii][3]
+
+        n_sample = nmax
+        c = np.asfortranarray(c_all[:n_sample, 0].reshape((n_sample, 1)), dtype='float32')
+
+        Zsp = sparse.csc_matrix((data, (col_ind, row_ind)), shape=(nmax, dz), dtype='float32')
+
+        # Solving nonnegative Lasso
+        param = {'numThreads': -1, 'verbose': True,
+                 'lambda1': lam, 'it0': 10, 'max_it': 2000, 'tol': 1e-3, 'intercept': False,
+                 'pos': True}
+
+        param['loss'] = 'square'
+        param['regul'] = 'l1'
+
+        W0 = np.zeros((Zsp.shape[1], c.shape[1]), dtype='float32', order="F")
+
+        (W, optim_info) = spams.fistaFlat(c, Zsp, W0, True, **param)
+
+        return W
+
+    def transform_matrix(T, root_node, nodes_tree=[]):
+        """
+        Usage:
+        #G is a Graph (networkx format)
+
+        T = nx.dfs_tree(G, root_node)
+        B,nodes_tree = transform_matrix(G,root_node,nodes_tree=labels)
+        Bsp = sparse.csc_matrix(B)
+
+        :param root_node:
+        :return: B, nodes_tree
+        """
+        if len(nodes_tree) == 0:
+            nodes_tree = list(T.nodes())
+
+        dict_nodes = {}
+        ii = 0
+        for node in nodes_tree:
+            dict_nodes[node] = ii
+            ii += 1
+
+        B = np.zeros((len(nodes_tree), len(nodes_tree)))
+        ii = 0
+        for node in nodes_tree:
+            node_current = node
+            B[dict_nodes[node_current], ii] = 1
+            B[dict_nodes[root_node], ii] = 1
+            while node_current is not root_node:
+                try:
+                    node_current = list(T.predecessors(node_current))[0]
+                    B[dict_nodes[node_current], ii] = 1
+                except:
+                    node_current = root_node
+            ii += 1
+
+        return B, nodes_tree
 
     def pairwiseTWD(self,a,b):
         # Compute the Tree Wasserstein
