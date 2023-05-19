@@ -39,18 +39,14 @@ class treeOT():
 
                 tree = self.build_quadtree(X, random_shift=True, width=None, origin=None)
                 print("build done")
-                self.D1, self.D2 = self.gen_matrix(tree, X)
+                #self.D1, self.D2 = self.gen_matrix(tree, X)
             else: #Clustering tree
                 random.seed(i)
                 tree = self.build_clustertree(X, k, d, debug_mode=debug_mode)
                 print("build done")
-                self.D1, self.D2 = self.gen_matrix(tree, X)
+                #self.D1, self.D2 = self.gen_matrix(tree, X)
 
-            #Construct B matrix
-            n_leaf, d = X.shape
-            n_in = self.D2.shape[0]
-            B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
-            B_ = np.concatenate((B1, np.eye(n_leaf)))
+            B_ = self.get_B_matrix(tree,X)
 
             if is_sparse:
                 #This one can be used when the number of samples are large
@@ -235,6 +231,65 @@ class treeOT():
                 D1[parent_idx, node_idx] = 1.0
         return D1, D2
 
+    def get_B_matrix(self, tree, X):
+        n_node = len(tree.all_nodes())
+        n_leaf = X.shape[0]
+        n_in   = n_node - n_leaf
+
+        B = np.zeros((n_node,n_leaf))
+
+        in_node   = [node.identifier for node in tree.all_nodes() if node.data == None]
+        in_node_index = [ii for ii in range(n_in)]
+        leaf_node = [node.identifier for node in tree.all_nodes() if node.data != None]
+        leaf_node_index = [node.data for node in tree.all_nodes() if node.data != None]
+        #leaf_node_index = [node.data for node in tree.all_nodes() if node.data != None]
+        path_leaves = tree.paths_to_leaves()
+        for path in path_leaves:
+            # check node is leaf or not
+            leaf_index = leaf_node_index[leaf_node.index(path[-1])]
+            B[leaf_index,leaf_index] = 1.0
+            for node in path[:-1]:
+                in_index = in_node_index[in_node.index(node)] + n_leaf
+                B[in_index,leaf_index] = 1.0
+        return B
+
+    def get_B_matrix_networkx(T, root_node, nodes_tree=[]):
+        """
+        Usage:
+        #G is a Graph (networkx format)
+
+        T = nx.dfs_tree(G, root_node)
+        B,nodes_tree = get_matrix_networkx(G,root_node,nodes_tree=labels)
+        Bsp = sparse.csc_matrix(B)
+
+        :param root_node:
+        :return: B, nodes_tree
+        """
+        if len(nodes_tree) == 0:
+            nodes_tree = list(T.nodes())
+
+        dict_nodes = {}
+        ii = 0
+        for node in nodes_tree:
+            dict_nodes[node] = ii
+            ii += 1
+
+        B = np.zeros((len(nodes_tree), len(nodes_tree)))
+        ii = 0
+        for node in nodes_tree:
+            node_current = node
+            B[dict_nodes[node_current], ii] = 1
+            B[dict_nodes[root_node], ii] = 1
+            while node_current is not root_node:
+                try:
+                    node_current = list(T.predecessors(node_current))[0]
+                    B[dict_nodes[node_current], ii] = 1
+                except:
+                    node_current = root_node
+            ii += 1
+
+        return B, nodes_tree
+
     def calc_weight(self, X, B, lam=0.001, seed=0, nmax=100000):
 
         n_leaf, d = X.shape
@@ -356,42 +411,7 @@ class treeOT():
 
         return W
 
-    def transform_matrix(T, root_node, nodes_tree=[]):
-        """
-        Usage:
-        #G is a Graph (networkx format)
 
-        T = nx.dfs_tree(G, root_node)
-        B,nodes_tree = transform_matrix(G,root_node,nodes_tree=labels)
-        Bsp = sparse.csc_matrix(B)
-
-        :param root_node:
-        :return: B, nodes_tree
-        """
-        if len(nodes_tree) == 0:
-            nodes_tree = list(T.nodes())
-
-        dict_nodes = {}
-        ii = 0
-        for node in nodes_tree:
-            dict_nodes[node] = ii
-            ii += 1
-
-        B = np.zeros((len(nodes_tree), len(nodes_tree)))
-        ii = 0
-        for node in nodes_tree:
-            node_current = node
-            B[dict_nodes[node_current], ii] = 1
-            B[dict_nodes[root_node], ii] = 1
-            while node_current is not root_node:
-                try:
-                    node_current = list(T.predecessors(node_current))[0]
-                    B[dict_nodes[node_current], ii] = 1
-                except:
-                    node_current = root_node
-            ii += 1
-
-        return B, nodes_tree
 
     def pairwiseTWD(self,a,b):
         # Compute the Tree Wasserstein
