@@ -47,25 +47,20 @@ class treeOT():
                 #self.D1, self.D2 = self.gen_matrix(tree, X)
 
             Bsp = self.get_B_matrix(tree,X)
-            B_  = Bsp.toarray()
+
 
             if is_sparse:
-                #This one can be used when the number of samples are large
-                #Make B matrix sparse
-                #Bsp = sparse.csc_matrix(B_)
-                wv_ = self.calc_weight_sparse(X, Bsp, lam=lam, nmax=nmax)
+                wv = self.calc_weight_sparse(X, Bsp, lam=lam, nmax=nmax)
             else:
-                wv_ = self.calc_weight(X,B_,lam=lam,nmax=nmax)
+                wv = self.calc_weight(X,Bsp,lam=lam,nmax=nmax)
 
             if i == 0:
-                B = B_
-                wv = wv_
+                wB = Bsp.multiply(wv)
             else:
-                B = np.vstack((B,B_))
-                wv = np.vstack((wv,wv_))
+                wB = sparse.vstack([wB,Bsp.multiply(wv)])
 
-        wB = wv*B
-        self.wB = csr_matrix(wB.astype(np.float32))
+
+        self.wB = wB
 
 
     def incremental_farthest_search(self, points, remaining_set, k, debug_mode=False):
