@@ -46,12 +46,13 @@ class treeOT():
                 print("build done")
                 #self.D1, self.D2 = self.gen_matrix(tree, X)
 
-            B_ = self.get_B_matrix(tree,X)
+            Bsp = self.get_B_matrix(tree,X)
+            B_  = Bsp.toarray()
 
             if is_sparse:
                 #This one can be used when the number of samples are large
                 #Make B matrix sparse
-                Bsp = sparse.csc_matrix(B_)
+                #Bsp = sparse.csc_matrix(B_)
                 wv_ = self.calc_weight_sparse(X, Bsp, lam=lam, nmax=nmax)
             else:
                 wv_ = self.calc_weight(X,B_,lam=lam,nmax=nmax)
@@ -236,7 +237,7 @@ class treeOT():
         n_leaf = X.shape[0]
         n_in   = n_node - n_leaf
 
-        B = np.zeros((n_node,n_leaf))
+        #B = np.zeros((n_node,n_leaf))
 
         in_node   = [node.identifier for node in tree.all_nodes() if node.data == None]
         in_node_index = [ii for ii in range(n_in)]
@@ -244,13 +245,28 @@ class treeOT():
         leaf_node_index = [node.data for node in tree.all_nodes() if node.data != None]
         #leaf_node_index = [node.data for node in tree.all_nodes() if node.data != None]
         path_leaves = tree.paths_to_leaves()
+
+        n_edge = 0
+        for path in path_leaves:
+            n_edge += len(path)
+        col_ind = np.zeros(n_edge)
+        row_ind = np.zeros(n_edge)
+        cnt = 0
         for path in path_leaves:
             # check node is leaf or not
             leaf_index = leaf_node_index[leaf_node.index(path[-1])]
-            B[leaf_index,leaf_index] = 1.0
+            #B[leaf_index,leaf_index] = 1.0
+            col_ind[cnt] = leaf_index
+            row_ind[cnt] = leaf_index
+            cnt += 1
             for node in path[:-1]:
                 in_index = in_node_index[in_node.index(node)] + n_leaf
-                B[in_index,leaf_index] = 1.0
+                #B[in_index,leaf_index] = 1.0
+                col_ind[cnt] = leaf_index
+                row_ind[cnt] = in_index
+                cnt+=1
+
+        B = sparse.csc_matrix((np.ones(n_edge), (row_ind, col_ind)), shape=(n_node, n_leaf), dtype='float32')
         return B
 
     def get_B_matrix_networkx(T, root_node, nodes_tree=[]):
