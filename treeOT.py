@@ -10,7 +10,7 @@ import networkx as nx
 import joblib
 
 class treeOT():
-    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=True):
+    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=True,is_leaf=True):
         """
          Parameter
          ----------
@@ -36,7 +36,6 @@ class treeOT():
 
             if method=='quad': #Quadtree
                 np.random.seed(i)
-
                 tree = self.build_quadtree(X, random_shift=True, width=None, origin=None)
                 print("build done")
             else: #Clustering tree
@@ -44,7 +43,7 @@ class treeOT():
                 tree = self.build_clustertree(X, k, d, debug_mode=debug_mode)
                 print("build done")
 
-            Bsp = self.get_B_matrix(tree,X)
+            Bsp = self.get_B_matrix(tree,X,is_leaf=is_leaf)
 
 
             if is_sparse:
@@ -225,7 +224,7 @@ class treeOT():
                 D1[parent_idx, node_idx] = 1.0
         return D1, D2
 
-    def get_B_matrix(self, tree, X):
+    def get_B_matrix(self, tree, X,is_leaf=True):
         n_node = len(tree.all_nodes())
         n_leaf = X.shape[0]
         n_in   = n_node - n_leaf
@@ -260,6 +259,10 @@ class treeOT():
                 cnt+=1
 
         B = sparse.csc_matrix((np.ones(n_edge), (row_ind, col_ind)), shape=(n_node, n_leaf), dtype='float32')
+        
+        #Remove leaf node to reduce number of parameters
+        if is_leaf == False:
+            B = B[n_leaf:,:]
         return B
 
     def get_B_matrix_networkx(T, root_node, nodes_tree=[]):
@@ -303,11 +306,6 @@ class treeOT():
 
         n_leaf, d = X.shape
         random.seed(seed)
-
-        # Create B matrix
-        #n_in = B.shape[1]
-        #B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
-        #B = np.concatenate((B1, np.eye(n_leaf)))
 
         dz = B.shape[0]
 
