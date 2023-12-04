@@ -1,12 +1,12 @@
 # Tree Wasserstein distance with weight training
-This is the demo code for the paper entitled [Approximating 1-Wasserstein Distance with Trees](https://openreview.net/forum?id=Ig82l87ZVU).
+This is the demo code for the paper entitled [Approximating 1-Wasserstein Distance with Trees](https://openreview.net/forum?id=Ig82l87ZVU) (TMLR 2022)
 
 Note that we used the QuadTree and clustertree implementations of [Fixed Support Tree-Sliced Wasserstein Barycenter](https://github.com/yukiTakezawa/FS_TSWB).
 
 ## Requirements
 Install requirements.
 ```
-sudo pip install -r requirement.txt
+sudo pip install -r requirements.txt
 ```
 
 ## Run
@@ -27,6 +27,10 @@ url={https://openreview.net/forum?id=Ig82l87ZVU},
 note={}
 }
 ```
+
+## Related papers
+- Sho Otao, & Makoto Yamada. [A linear time approximation of Wasserstein distance with word embedding selection](https://openreview.net/pdf?id=33aJCNQV1C) In EMNLP, 2023.
+- Cléa Laouar, Yuki Takezawa, & Makoto Yamada. [Large-scale similarity search with Optimal Transport](https://openreview.net/pdf?id=HNfwD7QOaq) In EMNLP, 2023.
 
 ## Related Github projects
 - [Supervised Tree-Wasserstein Distances (ICML 2021)](https://github.com/yukiTakezawa/STW)
