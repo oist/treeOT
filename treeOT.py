@@ -5,12 +5,12 @@ from tqdm import tqdm
 import random
 import spams
 from scipy import sparse
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 import networkx as nx
 import joblib
 
 class treeOT():
-    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=False):
+    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=True):
         """
          Parameter
          ----------
@@ -39,12 +39,10 @@ class treeOT():
 
                 tree = self.build_quadtree(X, random_shift=True, width=None, origin=None)
                 print("build done")
-                #self.D1, self.D2 = self.gen_matrix(tree, X)
             else: #Clustering tree
                 random.seed(i)
                 tree = self.build_clustertree(X, k, d, debug_mode=debug_mode)
                 print("build done")
-                #self.D1, self.D2 = self.gen_matrix(tree, X)
 
             Bsp = self.get_B_matrix(tree,X)
 
@@ -52,7 +50,7 @@ class treeOT():
             if is_sparse:
                 wv = self.calc_weight_sparse(X, Bsp, lam=lam, nmax=nmax)
             else:
-                wv = self.calc_weight(X,Bsp,lam=lam,nmax=nmax)
+                wv = self.calc_weight(X,Bsp.toarray(),lam=lam,nmax=nmax)
 
             if i == 0:
                 wB = Bsp.multiply(wv)
@@ -307,7 +305,7 @@ class treeOT():
         random.seed(seed)
 
         # Create B matrix
-        n_in = self.D2.shape[0]
+        #n_in = B.shape[1]
         #B1 = np.linalg.solve(np.eye(n_in) - self.D1, self.D2)
         #B = np.concatenate((B1, np.eye(n_leaf)))
 
@@ -337,7 +335,7 @@ class treeOT():
         param['loss'] = 'square'
         param['regul'] = 'l1'
 
-        W0 = np.zeros((Z.shape[1], c.shape[1]), dtype='float32', order="F")
+        W0 = np.ones((Z.shape[1], c.shape[1]), dtype='float32', order="F")
 
         (W, optim_info) = spams.fistaFlat(c, Zsp, W0, True, **param)
 
@@ -416,10 +414,10 @@ class treeOT():
         param['loss'] = 'square'
         param['regul'] = 'l1'
 
-        W0 = np.zeros((Zsp.shape[1], c.shape[1]), dtype='float32', order="F")
+        W0 = np.ones((Zsp.shape[1], c.shape[1]), dtype='float32', order="F")
 
         (W, optim_info) = spams.fistaFlat(c, Zsp, W0, True, **param)
-
+        
         return W
 
 
