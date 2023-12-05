@@ -25,13 +25,13 @@ n = len(X[0])
 M_all = ot.dist(X_all,X_all,metric='euclidean')
 
 #Construct tree
-# 'cluster': cluster tree
+# 'cluster': cluster tree (Farthest clustering 'fs', Kmeans 'kmeans')
 # 'quad': Quadtree
 # n_slice: Number of tree slice
 # lam: The regularization parameter
 n_slice = 1
-lam = 0.001
-ctree = treeOT(X_all / M_all.max(), method='cluster', lam=lam, n_slice=n_slice,is_sparse=True)
+lam = 0.0001
+ctree = treeOT(X_all / M_all.max(), method='cluster', cluster_type='kmeans', lam=lam, n_slice=n_slice,is_leaf=True)
 
 #Test
 n_test_sample = 100

@@ -8,9 +8,10 @@ from scipy import sparse
 from scipy.sparse import csr_matrix, csc_matrix
 import networkx as nx
 import joblib
+import faiss
 
 class treeOT():
-    def __init__(self, X, method='cluster', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=True,is_leaf=True):
+    def __init__(self, X, method='cluster', cluster_type='kmeans', lam=0.0001,nmax=100000, k=5, d=6, n_slice=1, debug_mode=False,is_sparse=True,is_leaf=True):
         """
          Parameter
          ----------
@@ -40,7 +41,7 @@ class treeOT():
                 print("build done")
             else: #Clustering tree
                 random.seed(i)
-                tree = self.build_clustertree(X, k, d, debug_mode=debug_mode)
+                tree = self.build_clustertree(X, k, d, debug_mode=debug_mode,cluster_type=cluster_type)
                 print("build done")
 
             Bsp = self.get_B_matrix(tree,X,is_leaf=is_leaf)
@@ -108,12 +109,24 @@ class treeOT():
 
 
 
-    def clustering(self, points, remaining_set, k, debug_mode=False):
-        solution_set = self.incremental_farthest_search(points, remaining_set, k, debug_mode=debug_mode)
-        return self.grouping(points, remaining_set, solution_set)
+    def clustering(self, points, remaining_set, k, debug_mode=False,cluster_type='fs'):
+
+        if cluster_type=='fs':
+            solution_set = self.incremental_farthest_search(points, remaining_set, k, debug_mode=debug_mode)
+            return self.grouping(points, remaining_set, solution_set)
+        else:
+            kmeans = faiss.Kmeans(points.shape[1], k)
+            kmeans.train(points[remaining_set])
+            D,I=kmeans.index.search(points[remaining_set],1)
+            solution_set = []
+            for kk in range(k):
+                solution_set.append(np.where(I.flatten()==kk)[0].tolist())
+            
+            return solution_set
+       
 
 
-    def _build_clustertree(self, X, remaining_set, k, d, debug_mode=False):
+    def _build_clustertree(self, X, remaining_set, k, d, debug_mode=False,cluster_type='fs'):
         tree = Tree()
         tree.create_node(data=None)
 
@@ -122,7 +135,7 @@ class treeOT():
                 tree.create_node(parent=tree.root, data=idx)
             return tree
 
-        groups = self.clustering(X, remaining_set, k, debug_mode=debug_mode)
+        groups = self.clustering(X, remaining_set, k, debug_mode=debug_mode,cluster_type=cluster_type)
         # print(groups)
         for group in groups:
             if len(group) == 1:
@@ -133,13 +146,13 @@ class treeOT():
         return tree
 
 
-    def build_clustertree(self, X, k, d, debug_mode=False):
+    def build_clustertree(self, X, k, d, debug_mode=False,cluster_type='kmeans'):
         """
         k : the number of child nodes
         d : the depth of the tree
         """
         remaining_set = [i for i in range(len(X))]
-        return self._build_clustertree(X, remaining_set, k, d, debug_mode=debug_mode)
+        return self._build_clustertree(X, remaining_set, k, d, debug_mode=debug_mode,cluster_type=cluster_type)
 
     def _build_quadtree(self, X, origin, remaining_idx, width):
         d = X.shape[1]  # dimension
