@@ -4,3 +4,4 @@ scipy==1.6.2
 spams==2.6.5.0
 tqdm==4.62.3
 treelib==1.6.1
+faiss==1.7.4
